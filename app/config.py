@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from pydantic_settings import BaseSettings
+from typing import Literal
 
 
 class Settings(BaseSettings):
@@ -14,9 +15,18 @@ class Settings(BaseSettings):
     openai_model: str = "gpt-4o-2024-08-06"
 
     # Storage Configuration
+    storage_backend: Literal["local", "s3"] = "local"
     data_dir: str = "data"
     markdown_output_dir: str = "data/markdown"
     json_output_dir: str = "data/json"
+
+    # S3 Configuration (only used if storage_backend is "s3")
+    s3_bucket_name: str = ""
+    s3_region: str = "eu-west-3"
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    s3_endpoint_url: str = ""  # For custom S3-compatible services
+    s3_prefix: str = "fastapi-data-extractor/"  # Prefix for all files in S3
 
     # Scraper Configuration
     playwright_headless: bool = True
