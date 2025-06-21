@@ -6,6 +6,7 @@ from openai import OpenAI
 from ..config import settings
 from ..services.schema_registry import SchemaRegistry
 from ..utils.logging_manager import LoggingManager
+from ..core.content_scraper import ContentScraper
 
 logger = LoggingManager.get_logger(__name__)
 
@@ -111,4 +112,82 @@ class ExtractionEngine:
                 processing_time=round(processing_time, 2),
             )
 
+            raise
+
+    def extract_from_image_directly(
+        self,
+        image_input: str,
+        extraction_type: str,
+        custom_instructions: Optional[str] = None,
+    ) -> Tuple[Dict[str, Any], Dict[str, int], float]:
+        """Extract structured data directly from image using Vision API"""
+        start_time = time.time()
+
+        # Get schema class
+        if extraction_type == "recipes":
+            from ..models.schemas.recipes import RecipeExtraction
+
+            schema_class = RecipeExtraction
+        else:
+            raise ValueError(
+                f"Direct image extraction not supported for: {extraction_type}"
+            )
+
+        # Prepare image
+        scraper = ContentScraper()
+        image_url = scraper._prepare_image_for_openai(image_input)
+
+        # Build prompt for direct extraction
+        system_prompt = f"""You are extracting structured recipe data directly from an image. 
+        {schema_class.prompt}
+        
+        Look at the image carefully and extract all recipe information you can see.
+        If ingredients are listed, extract them with quantities.
+        If cooking steps are shown, extract them in order.
+        """
+
+        if custom_instructions:
+            system_prompt += f"\n\nAdditional instructions: {custom_instructions}"
+
+        try:
+            completion = self.client.beta.chat.completions.parse(
+                model="gpt-4o",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": system_prompt,
+                    },
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Extract recipe information from this image:",
+                            },
+                            {"type": "image_url", "image_url": {"url": image_url}},
+                        ],
+                    },
+                ],
+                response_format=schema_class,
+            )
+
+            result = completion.choices[0].message.parsed
+            token_usage = {
+                "prompt_tokens": completion.usage.prompt_tokens,
+                "completion_tokens": completion.usage.completion_tokens,
+                "total_tokens": completion.usage.total_tokens,
+            }
+
+            processing_time = time.time() - start_time
+
+            logger.success(
+                f"Direct image extraction completed",
+                processing_time=round(processing_time, 2),
+            )
+
+            return result.model_dump(), token_usage, processing_time
+
+        except Exception as e:
+            processing_time = time.time() - start_time
+            logger.error(f"Direct image extraction failed: {str(e)}")
             raise

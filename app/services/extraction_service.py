@@ -13,7 +13,7 @@ logger = LoggingManager.get_logger(__name__)
 
 
 class ExtractionService:
-    """Service for single extraction requests - simplified"""
+    """Service for extraction requests supporting multiple input types"""
 
     def __init__(self):
         self.scraper = ContentScraper()
@@ -21,7 +21,7 @@ class ExtractionService:
         self.file_manager = FileManager()
 
     async def process_extraction(self, request: ExtractionRequest) -> ExtractionResult:
-        """Process a single extraction request"""
+        """Process extraction request with multiple input types"""
         start_time = time.time()
 
         logger.info(
@@ -31,24 +31,39 @@ class ExtractionService:
         )
 
         try:
-            # Get content based on input type
-            if request.input_type == InputType.URL:
-                content, markdown_path = self.scraper.fetch_content(
-                    request.content, request.save_markdown, request.output_directory
+            # For images, use direct extraction if it's recipes
+            if (
+                request.input_type == InputType.IMAGE
+                and request.extraction_type == "recipes"
+            ):
+                extracted_data, token_usage, extraction_time = (
+                    self.extraction_engine.extract_from_image_directly(
+                        request.content,
+                        request.extraction_type,
+                        request.custom_instructions,
+                    )
                 )
-                source_url = request.content
+                markdown_path = None  # No intermediate text for direct extraction
+                content = "Direct image extraction - no intermediate text"
             else:
-                content = request.content
-                markdown_path = None
-                source_url = None
-
-                # Save markdown for text input if requested
-                if request.save_markdown:
-                    markdown_path = self.file_manager.save_markdown(
-                        content,
-                        source_url,
+                # Standard flow: extract text first, then process
+                if request.input_type == InputType.TEXT:
+                    content = request.content
+                    markdown_path = None
+                    if request.save_markdown:
+                        markdown_path = self.file_manager.save_markdown(
+                            content,
+                            None,
+                            request.output_directory,
+                            request.filename_prefix,
+                        )
+                else:
+                    # Use ContentScraper for URL, YOUTUBE_URL (now async!)
+                    content, markdown_path = await self.scraper.fetch_content(
+                        request.content,
+                        request.input_type.value,
+                        request.save_markdown,
                         request.output_directory,
-                        request.filename_prefix,
                     )
 
             # Extract structured data

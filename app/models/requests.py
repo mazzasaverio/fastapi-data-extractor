@@ -4,8 +4,13 @@ from .base import InputType
 
 
 class ExtractionRequest(BaseModel):
-    input_type: InputType = Field(..., description="Type of input: text or url")
-    content: str = Field(..., description="Text content or URL to process")
+    input_type: InputType = Field(
+        ..., description="Type of input: text, url, image, or youtube_url"
+    )
+    content: str = Field(
+        ...,
+        description="Text content, URL, image path/base64, or YouTube URL to process",
+    )
     extraction_type: str = Field(..., description="Type of data to extract")
 
     # File management options

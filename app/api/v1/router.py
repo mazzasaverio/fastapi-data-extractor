@@ -1,17 +1,15 @@
 from fastapi import APIRouter
-from .modules import kitchen, job_postings, articles
+from .modules import kitchen
 
 api_router = APIRouter()
 
-# Domain-specific modules only
+# Only kitchen module with single tag
 api_router.include_router(
-    kitchen.router, prefix="/kitchen", tags=["kitchen", "recipes"]
+    kitchen.router, prefix="/kitchen", tags=["kitchen"]  # ← Solo un tag = una sezione
 )
 
-api_router.include_router(
-    job_postings.router, prefix="/job-postings", tags=["job-postings", "careers"]
-)
 
-api_router.include_router(
-    articles.router, prefix="/articles", tags=["articles", "content"]
-)
+@api_router.get("/modules")
+async def get_available_modules():
+    """Get information about available modules"""
+    return {"available_modules": ["kitchen"], "total_modules": 1}

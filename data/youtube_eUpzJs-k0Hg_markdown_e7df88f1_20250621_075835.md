@@ -1,0 +1,5 @@
+<!-- Source URL: https://www.youtube.com/watch?v=eUpzJs-k0Hg -->
+<!-- Content Hash: e7df88f1692e685504d0a54c79484c4c844bbde72c54a37f6a06f454ba70e488 -->
+<!-- Saved: 2025-06-21T07:58:35.379604+00:00 -->
+
+Hello! In this recipe we prepare spaghetti with pecorino and pepper Grate 1 and 3/4 cups (200g) of Pecorino romano cheese Collect the cheese in a bowl Cook 3/4 lb (320g) of spaghetti in boiling salted water, very al dente Ground black pepper to taste or crush it with a meat mallet Toast the pepper in a pan When the pepper is toasted (if smelled, it makes the nose pinch), deglaze with a ladle of cooking water Drain the spaghetti al dente in the pan Finish the cooking in a pan, stirring the spaghetti and adding cooking water as needed Add cooking water to taste to the Pecorino cheese and mix with a whisk Stir until you get a thick cream without lumps Remove the spaghetti from the heat Add the Pecorino cream and mix well Add more grated Pecorino and mix. Serve with pepper to taste Enjoy!
