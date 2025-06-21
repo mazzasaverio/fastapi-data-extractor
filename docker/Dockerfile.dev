@@ -1,0 +1,50 @@
+# Use official uv image with Python 3.13
+FROM ghcr.io/astral-sh/uv:python3.13-bookworm-slim
+
+# Install system dependencies for Playwright
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Development tools
+    curl wget git vim nano procps \
+    # Playwright system dependencies 
+    fonts-liberation libasound2 libatk-bridge2.0-0 libatk1.0-0 \
+    libc6 libcairo2 libcups2 libdbus-1-3 libexpat1 libfontconfig1 \
+    libgcc1 libgconf-2-4 libgdk-pixbuf2.0-0 libglib2.0-0 libgtk-3-0 \
+    libnspr4 libnss3 libpango-1.0-0 libpangocairo-1.0-0 libstdc++6 \
+    libx11-6 libx11-xcb1 libxcb1 libxcomposite1 libxcursor1 libxdamage1 \
+    libxext6 libxfixes3 libxi6 libxrandr2 libxrender1 libxss1 libxtst6 \
+    xvfb \
+    && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy dependency files AND README.md (required by pyproject.toml)
+COPY uv.lock pyproject.toml README.md ./
+
+# Install dependencies only (not the project itself)
+# This layer will be cached unless dependencies change
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked --no-install-project
+
+# Install Playwright browsers in separate layer (heavy operation)
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv run playwright install chromium
+
+# Copy source code
+COPY . .
+
+# Install the project itself
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked
+
+# Create non-root user for security
+RUN useradd --create-home --shell /bin/bash app \
+    && chown -R app:app /app
+USER app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Development server with auto-reload
+CMD ["uv", "run", "fastapi", "dev", "app/main.py", "--host", "0.0.0.0", "--port", "8000"]
