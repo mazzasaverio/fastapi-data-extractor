@@ -58,7 +58,7 @@ class ExtractionService:
                             request.filename_prefix,
                         )
                 else:
-                    # Use ContentScraper for URL, YOUTUBE_URL (now async!)
+                    # Use ContentScraper for URL, YOUTUBE_URL, AUDIO (now async!)
                     content, markdown_path = await self.scraper.fetch_content(
                         request.content,
                         request.input_type.value,
@@ -66,12 +66,12 @@ class ExtractionService:
                         request.output_directory,
                     )
 
-            # Extract structured data
-            extracted_data, token_usage, extraction_time = (
-                self.extraction_engine.extract_structured_data(
-                    content, request.extraction_type, request.custom_instructions
+                # Extract structured data
+                extracted_data, token_usage, extraction_time = (
+                    self.extraction_engine.extract_structured_data(
+                        content, request.extraction_type, request.custom_instructions
+                    )
                 )
-            )
 
             # Save JSON if requested
             json_path = None

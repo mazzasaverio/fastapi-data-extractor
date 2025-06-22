@@ -4,6 +4,8 @@ import hashlib
 import os
 from pathlib import Path
 from typing import Optional, Tuple
+import tempfile
+import base64
 
 import html2text
 from playwright.async_api import async_playwright
@@ -11,9 +13,6 @@ from playwright.async_api import async_playwright
 from ..config import settings
 from ..utils.logging_manager import LoggingManager
 from ..core.file_manager import FileManager
-
-import base64
-
 
 from youtube_transcript_api import YouTubeTranscriptApi
 import re
@@ -56,6 +55,10 @@ class ContentScraper:
                 )
             elif input_type == "youtube_url":
                 return self._process_youtube(content, save_markdown, output_directory)
+            elif input_type == "audio":
+                return self._process_audio_with_whisper(
+                    content, save_markdown, output_directory
+                )
             else:
                 raise ValueError(f"Unsupported input type: {input_type}")
 
@@ -257,3 +260,91 @@ class ContentScraper:
                 return match.group(1)
 
         return None
+
+    def _process_audio_with_whisper(
+        self, audio_input: str, save_markdown: bool, output_dir: Optional[str]
+    ) -> Tuple[str, Optional[str]]:
+        """Process audio file using OpenAI Whisper API"""
+        logger.info("Processing audio with OpenAI Whisper API")
+
+        try:
+            # Prepare audio file for OpenAI
+            audio_file_path = self._prepare_audio_for_openai(audio_input)
+
+            # Transcribe audio using Whisper
+            with open(audio_file_path, "rb") as audio_file:
+                transcript = self.openai_client.audio.transcriptions.create(
+                    model="whisper-1", file=audio_file, response_format="text"
+                )
+
+            if not transcript or not transcript.strip():
+                raise ValueError("No content extracted from audio")
+
+            logger.info(f"Whisper API transcribed {len(transcript)} characters")
+
+            # Save markdown if requested
+            markdown_path = None
+            if save_markdown:
+                audio_hash = hashlib.md5(audio_input.encode()).hexdigest()[:8]
+                markdown_path = self.file_manager.save_markdown(
+                    transcript,
+                    f"audio_transcription_{audio_hash}",
+                    output_dir,
+                    "audio_transcription",
+                )
+
+            # Clean up temporary file if created
+            if audio_file_path != audio_input and os.path.exists(audio_file_path):
+                os.unlink(audio_file_path)
+
+            return transcript.strip(), markdown_path
+
+        except Exception as e:
+            logger.error(f"Whisper API processing failed: {str(e)}")
+            raise
+
+    def _prepare_audio_for_openai(self, audio_input: str) -> str:
+        """Prepare audio for OpenAI Whisper API"""
+
+        # If it's a file path, return it directly
+        if os.path.isfile(audio_input):
+            return audio_input
+
+        # If it's base64 encoded audio, decode and save to temp file
+        if audio_input.startswith("data:audio"):
+            # Extract base64 data
+            header, data = audio_input.split(",", 1)
+            audio_data = base64.b64decode(data)
+
+            # Extract file extension from header
+            if "audio/wav" in header:
+                ext = ".wav"
+            elif "audio/mp3" in header:
+                ext = ".mp3"
+            elif "audio/m4a" in header:
+                ext = ".m4a"
+            elif "audio/ogg" in header:
+                ext = ".ogg"
+            else:
+                ext = ".wav"  # Default
+
+            # Create temporary file
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+            temp_file.write(audio_data)
+            temp_file.close()
+
+            return temp_file.name
+
+        # If it's raw base64 without header, assume it's audio
+        try:
+            audio_data = base64.b64decode(audio_input)
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".wav")
+            temp_file.write(audio_data)
+            temp_file.close()
+            return temp_file.name
+        except Exception:
+            pass
+
+        raise ValueError(
+            "Invalid audio input format. Provide file path or base64 encoded audio."
+        )

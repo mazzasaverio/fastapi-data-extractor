@@ -8,6 +8,7 @@ class InputType(str, Enum):
     URL = "url"
     IMAGE = "image"
     YOUTUBE_URL = "youtube_url"
+    AUDIO = "audio"
 
 
 class BaseExtractionSchema(BaseModel):
